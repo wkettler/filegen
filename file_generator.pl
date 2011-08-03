@@ -17,6 +17,7 @@ my $max_file_size = 10; # in KB
 my $qty = 8000000;
 my $output_dir = '/share/email';
 my $output_file = 'urandom.data';
+my $foler_size = 10240;
 my @file_size :shared = ();
 my @thr = ();
 
@@ -54,7 +55,7 @@ sub generate {
 		
 		system("mkdir $output_dir/$tid/$working_dir");
 		
-		for (my $i=0; $i<10240; $i++) {
+		for (my $i=0; $i<$folder_size; $i++) {
         
 			{
 				lock(@file_size);
