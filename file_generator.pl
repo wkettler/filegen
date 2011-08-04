@@ -68,7 +68,7 @@ sub generate {
 			}
 		
 			# generate file name
-			my $name = sprintf("%08d", $i) . "_" . $tid . "_" . $output_file;
+			my $name = sprintf("%06d", $i) . "_" . $tid . "_" . $working_dir . "_" . $output_file;
 
 			system("dd if=/dev/urandom of=$output_dir/$tid/$working_dir/$name bs=1024 count=$file_size 2> /dev/null");
 		
