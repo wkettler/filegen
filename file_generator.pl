@@ -17,7 +17,7 @@ my $max_file_size = 10; # in KB
 my $qty = 8000000;
 my $output_dir = '/share/email';
 my $output_file = 'urandom.data';
-my $foler_size = 10240;
+my $folder_size = 10240;
 my @file_size :shared = ();
 my @thr = ();
 
