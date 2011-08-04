@@ -88,7 +88,7 @@ sub progress {
           return;
         }
 
-		$progress = 100*($qty-@file_size)/$qty;
+		$progress = sprintf("%03d", 100*($qty-@file_size)/$qty);
 		print $progress . "% complete...\n";
 		sleep(5);
 	}
