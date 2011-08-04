@@ -14,8 +14,8 @@ use threads::shared;
 my $num_threads = 16;
 my $min_file_size = 6;  # in KB
 my $max_file_size = 10; # in KB
-my $qty = 8000000;
-my $output_dir = '/share/email';
+my $qty = 16000;
+my $output_dir = './data';
 my $output_file = 'urandom.data';
 my $folder_size = 10240;
 my @file_size :shared = ();
@@ -88,7 +88,7 @@ sub progress {
           return;
         }
 
-		$progress = sprintf("%03d", 100*($qty-@file_size)/$qty);
+		$progress = sprintf("%.2f", 100*($qty-@file_size)/$qty);
 		print $progress . "% complete...\n";
 		sleep(5);
 	}
