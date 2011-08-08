@@ -1,7 +1,7 @@
 #!/usr/bin/perl
 
 #
-# Generates file sets.
+# Generates unique data sets.
 #
 # Author: William Kettler
 #
@@ -12,6 +12,12 @@ use threads;
 use threads::shared;
 
 my $num_threads = 16;
+##############################
+# email 6K-10K
+# office 6K-1024K
+# medical single 512K
+# medical large 10240K-204800K
+##############################
 my $min_file_size = 6;  # in KB
 my $max_file_size = 10; # in KB
 my $qty = 16000;
