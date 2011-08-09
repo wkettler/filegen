@@ -4,6 +4,7 @@
 # Generates unique data sets.
 #
 # Author: William Kettler
+# (c) Dell Computer Inc
 #
 
 use strict;
@@ -11,19 +12,22 @@ use warnings;
 use threads;
 use threads::shared;
 
-my $num_threads = 16;
 ##############################
 # email 6K-10K
 # office 6K-1024K
 # medical single 512K
 # medical large 10240K-204800K
 ##############################
-my $min_file_size = 6;  # in KB
-my $max_file_size = 10; # in KB
-my $qty = 16000;
+
+my $num_threads = 8;
+my $min_file_size = 512;  # in KB
+my $max_file_size = 512; # in KB
+my $qty = 100000;
 my $output_dir = './data';
 my $output_file = 'urandom.data';
-my $folder_size = 10240;
+my $dir_struct = 0; # 1 if you want a directory structure
+my $dir_size = 10240; # number of files per directory when dir_struct is set to 1
+
 my @file_size :shared = ();
 my @thr = ();
 
@@ -35,7 +39,7 @@ for (my $i=0; $i<$qty; $i++) {
 
 # create threads
 for (my $i=0; $i<$num_threads; $i++) {
-    $thr[$i] = threads->create(\&generate);
+    $thr[$i] = threads->create(\&generate, $dir_struct);
 }
 
 # track progress
@@ -52,16 +56,17 @@ sub generate {
 	my $file_size = 0;
 	my $tid = threads->tid();
 	my $working_dir = '1';
+	my $dir_struct = $_[0];
 
     #print "Thread $tid started\n";
 	
-	system("mkdir $output_dir/$tid");
+	system("mkdir $output_dir/$tid") if ($dir_struct);
 
         while (1) {
+
+		system("mkdir $output_dir/$tid/$working_dir") if ($dir_struct);
 		
-		system("mkdir $output_dir/$tid/$working_dir");
-		
-		for (my $i=0; $i<$folder_size; $i++) {
+		for (my $i=0; $i<$dir_size; $i++) {
         
 			{
 				lock(@file_size);
@@ -76,7 +81,13 @@ sub generate {
 			# generate file name
 			my $name = sprintf("%06d", $i) . "_" . $tid . "_" . $working_dir . "_" . $output_file;
 
-			system("dd if=/dev/urandom of=$output_dir/$tid/$working_dir/$name bs=1024 count=$file_size 2> /dev/null");
+			if ($dir_struct) {
+				system("dd if=/dev/urandom of=$output_dir/$tid/$working_dir/$name bs=1024 count=$file_size 2> /dev/null");
+			}
+			else {
+				system("dd if=/dev/urandom of=$output_dir/$name bs=1024 count=$file_size 2> /dev/null");
+			}
+
 		
         }
 		
