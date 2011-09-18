@@ -47,12 +47,12 @@ GetOptions (
     );
 
 # check command line parameters
-if (!$MIN || !$MAX || !$QTY || !$OUTPUT_DIR || !$SPLIT) {
+if (!$MIN || !$MAX || !$QTY || !$OUTPUT_DIR || !defined($SPLIT)) {
     usage();
 }
 
-if ($MAX < $MIN) {
-    print "The max-size must be larger then the min-size.\n";
+if ($MAX <= $MIN) {
+    print "max-size must be greater than or equal to min-size.\n";
     usage();
 }
 
@@ -83,7 +83,7 @@ $progress->join();
 ####################
 # nothing but functions below
 ####################
-
+t
 sub generate {
     my $size;
     my $path;
