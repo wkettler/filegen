@@ -11,6 +11,7 @@ use strict;
 use warnings;
 use threads;
 use threads::shared;
+use Getopt::Long;
 
 ##############################
 # email 6K-10K
@@ -19,95 +20,137 @@ use threads::shared;
 # medical large 10240K-204800K
 ##############################
 
-my $num_threads = 8;
-my $min_file_size = 512;  # in KB
-my $max_file_size = 512; # in KB
-my $qty = 100000;
-my $output_dir = './data';
-my $output_file = 'urandom.data';
-my $dir_struct = 0; # 1 if you want a directory structure
-my $dir_size = 10240; # number of files per directory when dir_struct is set to 1
+my $THREAD_CT = 2;
+my $MIN;
+my $MAX;
+my $QTY;
+my $OUTPUT_DIR;
+my $SPLIT;
+my $ZERO;
 
-my @file_size :shared = ();
+my $ext = 'urandom.data';
+my $input_file = '/dev/urandom';
+my $ct :shared = 0;
+my $dir :shared = 0;
+my $done : shared = 0;
+my $lock :shared;
 my @thr = ();
 
-# generate random file size list
-my $range = ($max_file_size - $min_file_size) + 1;
-for (my $i=0; $i<$qty; $i++) {
-        push(@file_size, $min_file_size + int(rand($range)));
+GetOptions (
+    'thread-ct=i' => \$THREAD_CT,
+    'max-size=i' => \$MAX,
+    'min-size=i' => \$MIN,
+    'qty=i' => \$QTY,
+    'output-dir=s' => \$OUTPUT_DIR,
+    'zero' => \$ZERO,
+    'split=i' => \$SPLIT
+    );
+
+# check command line parameters
+if (!$MIN || !$MAX || !$QTY || !$OUTPUT_DIR || !$SPLIT) {
+    usage();
 }
 
-# create threads
-for (my $i=0; $i<$num_threads; $i++) {
-    $thr[$i] = threads->create(\&generate, $dir_struct);
+if ($MAX < $MIN) {
+    print "The max-size must be larger then the min-size.\n";
+    usage();
+}
+
+if (!-d $OUTPUT_DIR) {
+    print "Output directory does not exist\n";
+    usage();
+}
+
+if ($ZERO) {
+    $input_file = '/dev/null';
 }
 
 # track progress
 my $progress = threads->create(\&progress);
 
+# create threads
+for (my $i=0; $i<$THREAD_CT; $i++) {
+    $thr[$i] = threads->create(\&generate);
+}
+
 # exit threads
-for (my $i=0; $i<$num_threads; $i++) {
+for (my $i=0; $i<$THREAD_CT; $i++) {
     $thr[$i]->join();
 }
 
 $progress->join();
 
+####################
+# nothing but functions below
+####################
+
 sub generate {
-	my $file_size = 0;
-	my $tid = threads->tid();
-	my $working_dir = '1';
-	my $dir_struct = $_[0];
+    my $size;
+    my $path;
+    my $fid;
+    my $output_file;
+    my $tid = threads->tid();
 
-    #print "Thread $tid started\n";
-	
-	system("mkdir $output_dir/$tid") if ($dir_struct);
-
-        while (1) {
-
-		system("mkdir $output_dir/$tid/$working_dir") if ($dir_struct);
-		
-		for (my $i=0; $i<$dir_size; $i++) {
-        
-			{
-				lock(@file_size);
-				$file_size = pop(@file_size);
-			}
-
-			if (!defined($file_size)) {
-				#print "Thread $tid complete.  Processed $num files\n";
-				return;
-			}
-		
-			# generate file name
-			my $name = sprintf("%06d", $i) . "_" . $tid . "_" . $working_dir . "_" . $output_file;
-
-			if ($dir_struct) {
-				system("dd if=/dev/urandom of=$output_dir/$tid/$working_dir/$name bs=1024 count=$file_size 2> /dev/null");
-			}
-			else {
-				system("dd if=/dev/urandom of=$output_dir/$name bs=1024 count=$file_size 2> /dev/null");
-			}
-
-		
+    while (1) {
+        {
+            lock($lock);
+            
+            if ($done) {
+                return;
+            }
+            
+            # set the current directory and file id
+            if ($SPLIT != 0) {
+                if ($ct%$SPLIT == 0 && $ct != 0) {
+                    $dir++;
+                }
+                $path = $OUTPUT_DIR . "/" . $dir;
+                mkdir($path) unless(-d $path);
+                $fid = $ct%$SPLIT;
+            }
+            else {
+                $path = $OUTPUT_DIR;
+                $fid = $ct;
+            }
+            
+            if (++$ct == $QTY) {
+                $done = 1;
+            }
         }
-		
-		$working_dir++;
-		
-		}
+
+        my $output_file = $path . '/' . sprintf("%09d", $fid) . '_' . $tid . '_' . $ext;
+        my $size = $MIN + int(rand($MAX-$MIN));
+        
+        system("dd if=$input_file of=$output_file bs=1024 count=$size 2> /dev/null");
+    }	
 };
 
 sub progress {
-	my $progress = 0;
-
-	while (1) {
-		if (@file_size == 0) {
-           print "Complete!\n";
-          return;
+    my $percent;
+    my $numhashes;
+    my $columns = &getTerminalSize()->[1];
+    my $pbwidth = $columns-20;
+    while(1) {
+        $percent = sprintf("%.2f", $ct/$QTY*100);
+        $numhashes = ($ct/$QTY*$pbwidth);
+        printf("\r% -${pbwidth}s% 10s", '#' x $numhashes, "[ " . $percent . "% ]\n");
+        if ($ct == $QTY) {
+            print "File creation complete!!\n";
+            return;
         }
+        sleep 5;
+    }
+};
 
-		$progress = sprintf("%.2f", 100*($qty-@file_size)/$qty);
-		print $progress . "% complete...\n";
-		sleep(5);
-	}
+sub getTerminalSize {
+    use Term::ReadKey;
+    my ($w, $h) = GetTerminalSize(*STDOUT);
+    if (!defined $w || !defined $h) {
+        die "Cannot determine terminal size!";
+    }
+    return [$h, $w];
+};
 
+sub usage {
+    die "Usage\n";
 };
