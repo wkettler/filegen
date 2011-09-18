@@ -1,7 +1,7 @@
 #!/usr/bin/perl
 
 #
-# Generates unique data sets.
+# Generates data sets.
 #
 # Author: William Kettler
 # (c) Dell Computer Inc
@@ -20,61 +20,60 @@ use Getopt::Long;
 # medical large 10240K-204800K
 ##############################
 
-my $THREAD_CT = 2;
-my $MIN;
-my $MAX;
-my $QTY;
-my $OUTPUT_DIR;
-my $SPLIT;
-my $ZERO;
+my $thread_ct = 1;
+my $max = 0;
+my $min = 0;
+my $qty = 0;
+my $dir = '';
+my $zero = 0;
+my $split = 0;
 
 my $ext = 'urandom.data';
-my $input_file = '/dev/urandom';
+my $input = '/dev/urandom';
 my $ct :shared = 0;
-my $dir :shared = 0;
+my $dir_id :shared = 0;
 my $done : shared = 0;
 my $lock :shared;
 my @thr = ();
 
-GetOptions (
-    'thread-ct=i' => \$THREAD_CT,
-    'max-size=i' => \$MAX,
-    'min-size=i' => \$MIN,
-    'qty=i' => \$QTY,
-    'output-dir=s' => \$OUTPUT_DIR,
-    'zero' => \$ZERO,
-    'split=i' => \$SPLIT
-    );
+GetOptions ( 
+    'thread-ct=i' => \$thread_ct,
+    'max=i' => \$max,
+    'min=i' => \$min,
+    'qty=i' => \$qty,
+    'dir=s' => \$dir,
+    'zero' => \$zero,
+    'split=i' => \$split
+    ) or usage();
 
 # check command line parameters
-if (!$MIN || !$MAX || !$QTY || !$OUTPUT_DIR || !defined($SPLIT)) {
+if (!$min || !$max || !$qty || !$dir) {
     usage();
 }
 
-if ($MAX <= $MIN) {
-    print "max-size must be greater than or equal to min-size.\n";
-    usage();
+if ($max < $min) {
+    print "Error : max must be greater than or equal to min\n";
 }
 
-if (!-d $OUTPUT_DIR) {
-    print "Output directory does not exist\n";
-    usage();
+if (!-d $dir) {
+    print "Error : output directory does not exist\n";
 }
 
-if ($ZERO) {
-    $input_file = '/dev/null';
+if ($zero) {
+    $ext = 'zero.data';
+    $input = '/dev/null';
 }
 
 # track progress
 my $progress = threads->create(\&progress);
 
 # create threads
-for (my $i=0; $i<$THREAD_CT; $i++) {
+for (my $i=0; $i<$thread_ct; $i++) {
     $thr[$i] = threads->create(\&generate);
 }
 
 # exit threads
-for (my $i=0; $i<$THREAD_CT; $i++) {
+for (my $i=0; $i<$thread_ct; $i++) {
     $thr[$i]->join();
 }
 
@@ -83,45 +82,42 @@ $progress->join();
 ####################
 # nothing but functions below
 ####################
-t
+
 sub generate {
     my $size;
     my $path;
-    my $fid;
-    my $output_file;
-    my $tid = threads->tid();
+    my $file_id;
+    my $output;
+    #my $tid = threads->tid();
 
     while (1) {
         {
             lock($lock);
-            
-            if ($done) {
-                return;
-            }
+            return if $done;
             
             # set the current directory and file id
-            if ($SPLIT != 0) {
-                if ($ct%$SPLIT == 0 && $ct != 0) {
-                    $dir++;
-                }
-                $path = $OUTPUT_DIR . "/" . $dir;
-                mkdir($path) unless(-d $path);
-                $fid = $ct%$SPLIT;
+            if ($split != 0) {
+                $file_id = $ct % $split;
+                $dir_id++ if ($file_id == 0 && $ct != 0);
+                $path = $dir . "/" . $dir_id;
+                mkdir($path) or die "Cannot make directory $path : $!\n" 
+                    unless(-d $path);
             }
             else {
-                $path = $OUTPUT_DIR;
-                $fid = $ct;
+                $path = $dir;
+                $file_id = $ct;
             }
             
-            if (++$ct == $QTY) {
-                $done = 1;
-            }
+            my $output = $path .'/'. sprintf("%09d", $file_id) .'_'. $dir_id .'_'. $ext;
+
+            # signal test is done
+            $done = 1 if (++$ct == $qty);
         }
 
-        my $output_file = $path . '/' . sprintf("%09d", $fid) . '_' . $tid . '_' . $ext;
-        my $size = $MIN + int(rand($MAX-$MIN));
+        my $size = $min + int(rand($max -$min));
         
-        system("dd if=$input_file of=$output_file bs=1024 count=$size 2> /dev/null");
+        system("dd if=$input of=$output bs=1024 count=$size 2> /dev/null")
+            == 0 or die "Cannot create file $output : $!\n";
     }	
 };
 
@@ -130,12 +126,16 @@ sub progress {
     my $numhashes;
     my $columns = &getTerminalSize()->[1];
     my $pbwidth = $columns-20;
+    my $stime = time();
+    my $etime;
     while(1) {
-        $percent = sprintf("%.2f", $ct/$QTY*100);
-        $numhashes = ($ct/$QTY*$pbwidth);
+        $percent = sprintf("%.2f", $ct/$qty*100);
+        $numhashes = ($ct/$qty*$pbwidth);
         printf("\r% -${pbwidth}s% 10s", '#' x $numhashes, "[ " . $percent . "% ]\n");
-        if ($ct == $QTY) {
+        if ($ct == $qty) {
+            $etime = time();
             print "File creation complete!!\n";
+            print "Generate $qty file in " . ($etime - $stime) . " seconds.\n";
             return;
         }
         sleep 5;
@@ -152,5 +152,5 @@ sub getTerminalSize {
 };
 
 sub usage {
-    die "Usage\n";
+    die "Printing usage.\n";
 };
