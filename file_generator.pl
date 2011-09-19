@@ -20,7 +20,7 @@ use Getopt::Long;
 # medical large 10240K-204800K
 ##############################
 
-my $thread_ct = 1;
+my $threads = 1;
 my $max = 0;
 my $min = 0;
 my $qty = 0;
@@ -37,7 +37,7 @@ my $lock :shared;
 my @thr = ();
 
 GetOptions ( 
-    'thread-ct=i' => \$thread_ct,
+    'threads=i' => \$threads,
     'max=i' => \$max,
     'min=i' => \$min,
     'qty=i' => \$qty,
@@ -68,12 +68,12 @@ if ($zero) {
 my $progress = threads->create(\&progress);
 
 # create threads
-for (my $i=0; $i<$thread_ct; $i++) {
+for (my $i=0; $i<$threads; $i++) {
     $thr[$i] = threads->create(\&generate);
 }
 
 # exit threads
-for (my $i=0; $i<$thread_ct; $i++) {
+for (my $i=0; $i<$threads; $i++) {
     $thr[$i]->join();
 }
 
@@ -108,13 +108,13 @@ sub generate {
                 $file_id = $ct;
             }
             
-            my $output = $path .'/'. sprintf("%09d", $file_id) .'_'. $dir_id .'_'. $ext;
+            $output = $path .'/'. sprintf("%09d", $file_id) .'_'. $dir_id .'_'. $ext;
 
             # signal test is done
             $done = 1 if (++$ct == $qty);
         }
 
-        my $size = $min + int(rand($max -$min));
+        $size = $min + int(rand($max -$min));
         
         system("dd if=$input of=$output bs=1024 count=$size 2> /dev/null")
             == 0 or die "Cannot create file $output : $!\n";
@@ -152,5 +152,21 @@ sub getTerminalSize {
 };
 
 sub usage {
-    die "Printing usage.\n";
+    die "
+Usage : $0 [OPTIONS]
+
+--dir=DIRECTORY         create all files in DIRECTORY
+
+--max=KBYTES            maximum file size in KBYTES
+
+--min=KBYES             minimum file size in KBYTES
+
+--split=NUMBER          number of files per directory. If 0 all files
+                        are written in the base DIRECTORY
+
+--threads=NUMBER        number of worker threads
+
+--qty=NUMBER            number of files to generate
+
+--zero                  write from /dev/zero instead of urandom\n";
 };
