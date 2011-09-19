@@ -153,20 +153,15 @@ sub getTerminalSize {
 
 sub usage {
     die "
-Usage : $0 [OPTIONS]
+$0 [OPTIONS] --dir=DIRECTORY --max=KBYTES --min=KBYTES --qty=NUMBER
+Generate files between min and max KBYTES in size.
 
---dir=DIRECTORY         create all files in DIRECTORY
-
---max=KBYTES            maximum file size in KBYTES
-
---min=KBYES             minimum file size in KBYTES
-
---split=NUMBER          number of files per directory. If 0 all files
-                        are written in the base DIRECTORY
-
---threads=NUMBER        number of worker threads
-
---qty=NUMBER            number of files to generate
-
---zero                  write from /dev/zero instead of urandom\n";
+     --dir=DIRECTORY         create all files in DIRECTORY
+     --max=KBYTES            maximum file size in KBYTES
+     --min=KBYES             minimum file size in KBYTES
+     --split=NUMBER          number of files per directory. If 0 all files
+                             are written in the base DIRECTORY
+     --threads=NUMBER        number of worker threads
+     --qty=NUMBER            number of files to generate
+     --zero                  write from /dev/zero instead of /dev/urandom\n";
 };
