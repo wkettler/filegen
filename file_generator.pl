@@ -1,10 +1,11 @@
 #!/usr/bin/perl
-
 #
-# Generates data sets.
+# file_generator.pl -- generate unique file datasets
 #
-# Author: William Kettler
-# (c) Dell Computer Inc
+# Written by William Ketler <william_kettler@dell.com>
+#       Copyright (C) 2011, All Rights Reserved
+#
+# Last update 2011-11-30
 #
 
 use strict;
@@ -12,6 +13,7 @@ use warnings;
 use threads;
 use threads::shared;
 use Getopt::Long;
+use File::Spec;
 
 ##############################
 # email 6K-10K
@@ -52,17 +54,19 @@ if (!$min || !$max || !$qty || !$dir) {
 }
 
 if ($max < $min) {
-    print "Error : max must be greater than or equal to min\n";
+    die "Error : max must be greater than or equal to min\n";
 }
 
 if (!-d $dir) {
-    print "Error : output directory does not exist\n";
+    die "Error : output directory does not exist\n";
 }
 
 if ($zero) {
     $ext = 'zero.data';
     $input = '/dev/null';
 }
+
+# $dir = File::Spec->rel2abs($dir);
 
 # track progress
 my $progress = threads->create(\&progress);
@@ -135,7 +139,7 @@ sub progress {
         if ($ct == $qty) {
             $etime = time();
             print "File creation complete!!\n";
-            print "Generate $qty file in " . ($etime - $stime) . " seconds.\n";
+            print "Generated $qty files in " . ($etime - $stime) . " seconds.\n";
             return;
         }
         sleep 5;
@@ -153,9 +157,13 @@ sub getTerminalSize {
 
 sub usage {
     die "
-$0 [OPTIONS] --dir=DIRECTORY --max=KBYTES --min=KBYTES --qty=NUMBER
-Generate files between min and max KBYTES in size.
+$0 -- help
 
+Multi-threaded file generator.
+
+$0 [OPTIONS] --dir=DIRECTORY --max=KBYTES --min=KBYTES --qty=NUMBER
+
+Options : 
      --dir=DIRECTORY         create all files in DIRECTORY
      --max=KBYTES            maximum file size in KBYTES
      --min=KBYES             minimum file size in KBYTES
@@ -163,5 +171,11 @@ Generate files between min and max KBYTES in size.
                              are written in the base DIRECTORY
      --threads=NUMBER        number of worker threads
      --qty=NUMBER            number of files to generate
-     --zero                  write from /dev/zero instead of /dev/urandom\n";
+     --zero                  write from /dev/zero instead of /dev/urandom
+
+Dataset definitions : 
+     email 6K-10K
+     office 6K-1024K
+     medical single 512K
+     medical large 10240K-204800K\n";
 };
