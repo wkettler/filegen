@@ -14,6 +14,7 @@ use threads;
 use threads::shared;
 use Getopt::Long;
 use File::Spec;
+use Pod::Usage;
 
 ##############################
 # email 6K-10K
@@ -22,35 +23,54 @@ use File::Spec;
 # medical large 10240K-204800K
 ##############################
 
+my $VERSION = '0.1.0';
+
+my $help    = '';
+my $man     = '';
+my $version = '';
 my $threads = 1;
-my $max = 0;
-my $min = 0;
-my $qty = 0;
-my $dir = '';
-my $zero = 0;
-my $split = 0;
+my $max     = 0;
+my $min     = 0;
+my $qty     = 0;
+my $dir     = '';
+my $zero    = 0;
+my $split   = 0;
 
-my $ext = 'urandom.data';
-my $input = '/dev/urandom';
-my $ct :shared = 0;
-my $dir_id :shared = 0;
-my $done : shared = 0;
+my $ext             = '.data';
+my $input           = '';
+my $ct :shared      = 0;
+my $dir_id :shared  = 0;
+my $done : shared   = 0;
+my @thr             = ();
 my $lock :shared;
-my @thr = ();
 
-GetOptions ( 
+GetOptions (
+    'help|?'    => \$help,
+    'man'       => \$man,
+    'version'   => \$version,
     'threads=i' => \$threads,
-    'max=i' => \$max,
-    'min=i' => \$min,
-    'qty=i' => \$qty,
-    'dir=s' => \$dir,
-    'zero' => \$zero,
-    'split=i' => \$split
-    ) or usage();
+    'max=i'     => \$max,
+    'min=i'     => \$min,
+    'qty=i'     => \$qty,
+    'dir=s'     => \$dir,
+    'zero'      => \$zero,
+    'split=i'   => \$split
+) or pod2usage(1);
 
-# check command line parameters
+# Check command line parameters.
+pod2usage( 1 ) if $help;
+
+pod2usage(
+    -exitstatus => 0,
+    -verbose    => 2,
+) if $man;
+
+if ( $version ) {
+    print "$VERSION\n";
+    exit;
+}
 if (!$min || !$max || !$qty || !$dir) {
-    usage();
+    pod2usage();
 }
 
 if ($max < $min) {
@@ -62,21 +82,23 @@ if (!-d $dir) {
 }
 
 if ($zero) {
-    $ext = 'zero.data';
+    $ext   = 'zero' . $ext;
     $input = '/dev/null';
 }
+else {
+    $ext   = 'urandom' . $ext;
+    $input = '/dev/urandom';
+}
 
-# $dir = File::Spec->rel2abs($dir);
-
-# track progress
+# Track progress
 my $progress = threads->create(\&progress);
 
-# create threads
+# Create threads
 for (my $i=0; $i<$threads; $i++) {
     $thr[$i] = threads->create(\&generate);
 }
 
-# exit threads
+# Exit threads
 for (my $i=0; $i<$threads; $i++) {
     $thr[$i]->join();
 }
@@ -92,7 +114,6 @@ sub generate {
     my $path;
     my $file_id;
     my $output;
-    #my $tid = threads->tid();
 
     while (1) {
         {
@@ -127,15 +148,12 @@ sub generate {
 
 sub progress {
     my $percent;
-    my $numhashes;
-    my $columns = &getTerminalSize()->[1];
-    my $pbwidth = $columns-20;
     my $stime = time();
     my $etime;
+    
     while(1) {
-        $percent = sprintf("%.2f", $ct/$qty*100);
-        $numhashes = ($ct/$qty*$pbwidth);
-        printf("\r% -${pbwidth}s% 10s", '#' x $numhashes, "[ " . $percent . "% ]\n");
+        $percent = sprintf("%.2f", ($ct/$qty)*100);
+        print "[ $percent % ]\n";
         if ($ct == $qty) {
             $etime = time();
             print "File creation complete!!\n";
@@ -146,36 +164,77 @@ sub progress {
     }
 };
 
-sub getTerminalSize {
-    use Term::ReadKey;
-    my ($w, $h) = GetTerminalSize(*STDOUT);
-    if (!defined $w || !defined $h) {
-        die "Cannot determine terminal size!";
-    }
-    return [$h, $w];
-};
+__END__
 
-sub usage {
-    die "
-$0 -- help
+=head1 NAME
 
-Multi-threaded file generator.
+FileGen - Multi-threaded file generator.
 
-$0 [OPTIONS] --dir=DIRECTORY --max=KBYTES --min=KBYTES --qty=NUMBER
+=head1 SYNOPSIS
 
-Options : 
-     --dir=DIRECTORY         create all files in DIRECTORY
-     --max=KBYTES            maximum file size in KBYTES
-     --min=KBYES             minimum file size in KBYTES
-     --split=NUMBER          number of files per directory. If 0 all files
-                             are written in the base DIRECTORY
-     --threads=NUMBER        number of worker threads
-     --qty=NUMBER            number of files to generate
-     --zero                  write from /dev/zero instead of /dev/urandom
+file_gen.pl [options] --dir=DIRECTORY --max=KBYTES --min=KBYTES --qty=number_format
 
-Dataset definitions : 
-     email 6K-10K
-     office 6K-1024K
-     medical single 512K
-     medical large 10240K-204800K\n";
-};
+    Options :
+        --help               Show help.
+        --man                Show manual.
+        --version            Show version.
+        --split=NUMBER       Number of files per directory.
+        --threads=NUMBER     Number of threads.
+        --zero               Write from /dev/zero.
+
+    Dataset definitions : 
+        email          6K-10K
+        office         6K-1024K
+        medical single 512K
+        medical large  10240K-204800K
+
+=head1 OPTIONS
+
+=over 8
+
+=item B<--dir>
+
+Aboslute path to the output directory.
+
+=item B<--help>
+
+Prints a brief help message and exits.
+
+=item B<--man>
+
+Prints the manual page and exits.
+
+=item B<--max>
+
+Maximum file size specified in KB.
+
+=item B<--min>
+
+Minimum file size specified in KB.
+
+=item B<--qty>
+
+Number of files to generate.
+
+=item B<--split>
+
+Defines the number of files per directory. The default behavior is to create all files in the base directory.
+
+=item B<--threads>
+
+Number of threads. Additional threads can increase application performance.
+
+=item B<--version>
+
+Prints the program version and exits.
+
+=item B<--zero>
+
+If defined all files will be generated using /dev/null. The default behavior is to write from /dev/urandom.
+
+=back
+
+=head1 DESCRIPTION
+
+B<This program> will generate a specified quantity of files for testing. Each file generated is a random size between the min and max defined values.
+=cut
