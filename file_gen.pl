@@ -83,7 +83,7 @@ if (!-d $dir) {
 
 if ($zero) {
     $ext   = 'zero' . $ext;
-    $input = '/dev/null';
+    $input = '/dev/zero';
 }
 else {
     $ext   = 'urandom' . $ext;
