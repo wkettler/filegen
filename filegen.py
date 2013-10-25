@@ -27,14 +27,14 @@ from argparse import ArgumentParser
 
 def w_srand(f, size, bs=None):
     """
-    Create a new file and fill it with pseudo random data.
-        
-    Inputs:
-        f    (str): name of file
-        size (int): size in KB
-        bs   (int): block size in KB
-    Outputs:
-        NULL
+        Create a new file and fill it with pseudo random data.
+            
+        Inputs:
+            f    (str): name of file
+            size (int): size in KB
+            bs   (int): block size in KB
+        Outputs:
+            NULL
     """
     
     if not bs:
@@ -70,34 +70,38 @@ def filegen(min_sz, max_sz, qty, dst=None, split=None):
     
     if not dst:
         dst = os.getcwd()
-        
+                
     if split:
         current_dir = 0
-        os.mkdir(os.path.join(dst, str(current_dir)))
+        pwd = os.path.join(dst, str(current_dir))
+        os.mkdir(pwd)
     else:
-        current_dir = dst
+        pwd = dst
         split = qty
     
     current_ct = 0
     while True:
+        while current_ct < split:
+            # Write file.    
+            size = randint(min_sz, max_sz)
+            f = os.path.join(pwd, ".".join([str(current_ct), "data"]))
+            w_srand(f, size)
+            
+            # Update counters.
+            current_ct += 1
+            qty -= 1
+            
         # Exit if file count limit reached.
         if qty == 0:
             break
+            
+        # Increment directory
+        current_dir += 1
+        pwd = os.path.join(dst, str(current_dir))
+        os.mkdir(pwd)
         
-        # Make new directory if file count per dir reached.
-        if current_ct == split:
-            current_ct = 0
-            current_dir += 1
-            os.mkdir(os.path.join(dst, str(current_dir)))
-        
-        # Write file.    
-        size = randint(min_sz, max_sz)
-        f = os.path.join(dst, str(current_dir), ".".join([str(current_ct), "data"]))
-        w_srand(f, size)
-        
-        # Update counters.
-        current_ct += 1
-        qty -= 1
+        # Reset current file count
+        current_ct = 0
 
 if __name__ == '__main__':
     # Define CLI arguments.
