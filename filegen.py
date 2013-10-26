@@ -95,7 +95,7 @@ def filegen(min_sz, max_sz, qty, dst=None, split=None):
         if qty == 0:
             break
             
-        # Increment directory
+        # Create new working directory
         current_dir += 1
         pwd = os.path.join(dst, str(current_dir))
         os.mkdir(pwd)
