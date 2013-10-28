@@ -25,7 +25,7 @@ import os
 from random import randint
 from argparse import ArgumentParser
 
-def w_srand(f, size, bs=1024, fsync=False):
+def w_srand(f, size, bs=None):
     """
         Create a new file and fill it with pseudo random data.
     
@@ -131,8 +131,7 @@ def filegen(min_sz, max_sz, qty, ftype, dst=None, split=None):
     # Use current directory if not defined
     if not dst:
         dst = os.getcwd()
-    
-    # Define working directory                
+        
     if split:
         current_dir = 0
         pwd = os.path.join(dst, str(current_dir))
@@ -143,27 +142,24 @@ def filegen(min_sz, max_sz, qty, ftype, dst=None, split=None):
     
     current_ct = 0
     while True:
-        while current_ct < split:
-            # Write file.    
-            size = randint(min_sz, max_sz)
-            f = os.path.join(pwd, ".".join([str(current_ct), "data"]))
-            gen(f, size)
-            
-            # Update counters.
-            current_ct += 1
-            qty -= 1
-            
         # Exit if file count limit reached.
         if qty == 0:
             break
-            
-        # Increment directory
-        current_dir += 1
-        pwd = os.path.join(dst, str(current_dir))
-        os.mkdir(pwd)
         
-        # Reset current file count
-        current_ct = 0
+        # Make new directory if file count per dir reached.
+        if current_ct == split:
+            current_ct = 0
+            current_dir += 1
+            os.mkdir(os.path.join(dst, str(current_dir)))
+        
+        # Write file.    
+        size = randint(min_sz, max_sz)
+        f = os.path.join(dst, str(current_dir), ".".join([str(current_ct), "data"]))
+        w_srand(f, size)
+        
+        # Update counters.
+        current_ct += 1
+        qty -= 1
 
 if __name__ == '__main__':
     # Define CLI arguments.
