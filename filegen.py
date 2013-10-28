@@ -109,7 +109,7 @@ def filegen(min_sz, max_sz, qty, ftype, dst=None, split=None):
             min_sz (int): Minimum file size
             max_sz (int): Maximum file size
             qty    (int): Total file count
-            ftype  (int): File typ
+            ftype  (int): File type
             dst    (str): Destination directory
             split  (int): File per directory
         Outputs:
