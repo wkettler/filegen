@@ -123,14 +123,14 @@ def filegen(min_sz, max_sz, qty, ftype, dst=None, split=None):
         print 'Using random file generator.'
         gen = lambda f, size: w_rand(f, size)
     elif ftype == 2:
-        print 'Using pseudo file generator.'
+        print 'Using pseudo-random file generator.'
         gen = lambda f, size: w_srand(f, size)
     else:
         raise RuntimeError('Invalid file type.')
     
     # Use current directory if not defined
     if not dst:
-            dst = os.getcwd()
+        dst = os.getcwd()
     
     # Define working directory                
     if split:
