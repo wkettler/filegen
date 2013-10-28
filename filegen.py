@@ -25,15 +25,15 @@ import os
 from random import randint
 from argparse import ArgumentParser
 
-def w_srand(f, size, bs=None):
+def w_srand(f, size, bs=1024, fsync=False):
     """
         Create a new file and fill it with pseudo random data.
     
         Inputs:
-            f     (str): name of the file
-            size  (str): size in KB
-            bs    (str): block size in KB
-            fsync (str): fsync after IO is complete
+            f      (str): name of the file
+            size   (int): size in KB
+            bs     (int): block size in KB
+            fsync (bool): fsync after IO is complete
         Outputs:
             NULL
     """
@@ -55,10 +55,10 @@ def w_rand(f, size, bs=1024, fsync=False):
         Create a new file and fill it with random data.
     
         Inputs:
-            f     (str): name of the file
-            size  (str): size in KB
-            bs    (str): block size in KB
-            fsync (str): fsync after IO is complete
+            f      (str): name of the file
+            size   (int): size in KB
+            bs     (int): block size in KB
+            fsync (bool): fsync after IO is complete
         Outputs:
             NULL
     """
@@ -80,10 +80,10 @@ def w_zero(f, size, bs=1024, fsync=False):
         Create a new file and fill it with zeros.
     
         Inputs:
-            f     (str): name of the file
-            size  (str): size in KB
-            bs    (str): block size in KB
-            fsync (str): fsync after IO is complete
+            f      (str): name of the file
+            size   (int): size in KB
+            bs     (int): block size in KB
+            fsync (bool): fsync after IO is complete
         Outputs:
             NULL
     """
