@@ -25,21 +25,42 @@ import os
 from random import randint
 from argparse import ArgumentParser
 
-def trim_slash(d):
+def w_srand(f, size, bs=1024, fsync=False):
     """
-    Trim trailing slash.
-    """
-    return d.rstrip(os.path.sep)
-
-def w_srand(f, size, bs=16, fsync=False):
-    """
-    Create a new file and fill it with pseudo random data.
+        Create a new file and fill it with pseudo random data.
     
-    Arguments:
-    f -- name of the file
-    size -- size in KB
-    bs -- block size in KB
-    fsync -- fsync after IO is complete
+        Inputs:
+            f     (str): name of the file
+            size  (str): size in KB
+            bs    (str): block size in KB
+            fsync (str): fsync after IO is complete
+        Outputs:
+            NULL
+    """
+    buf = '\0' * 1024
+    with open(f, 'wb') as fh:
+        while True:
+            if size < bs:
+                fh.write(buf * size)
+                break
+            fh.write(buf * bs)
+            size -= bs
+        # Sync
+        if fsync:
+            fh.flush()
+            os.fsync(fh.fileno())
+            
+def w_rand(f, size, bs=1024, fsync=False):
+    """
+        Create a new file and fill it with random data.
+    
+        Inputs:
+            f     (str): name of the file
+            size  (str): size in KB
+            bs    (str): block size in KB
+            fsync (str): fsync after IO is complete
+        Outputs:
+            NULL
     """
     buf = os.urandom(1024)
     with open(f, 'wb') as fh:
@@ -49,46 +70,22 @@ def w_srand(f, size, bs=16, fsync=False):
                 break
             fh.write(buf * bs)
             size -= bs
-        # Force write of fdst to disk.
+        # Sync
         if fsync:
             fh.flush()
             os.fsync(fh.fileno())
-            
-def w_rand(f, size, bs=16, fsync=False):
+                                
+def w_zero(f, size, bs=1024, fsync=False):
     """
-    Create a new file and fill it with random data.
+        Create a new file and fill it with zeros.
     
-    Arguments:
-    f -- name of the file
-    size -- size in KB
-    bs -- block size in KB
-    fsync -- fsync after IO is complete
-    """
-    bs *= 1024
-    size *= 1024
-
-    with open(f, 'wb') as fh:
-        while True:
-            if size < bs:
-                buf = os.urandom(size)
-                fh.write(buf)
-                break
-            buf = os.urandom(bs)
-            fh.write(buf)
-            size -= bs
-        # Force write of fdst to disk.
-        if fsync:
-            fh.flush()
-            os.fsync(fh.fileno())
-def w_zero(f, size, bs=16, fsync=False):
-    """
-    Create a new file and fill it with zeros.
-
-    Arguments:
-    f -- name of the file
-    size -- size in KB
-    bs -- block size in KB
-    fsync -- fsync after IO is complete
+        Inputs:
+            f     (str): name of the file
+            size  (str): size in KB
+            bs    (str): block size in KB
+            fsync (str): fsync after IO is complete
+        Outputs:
+            NULL
     """
     buf = '\0' * 1024
     with open(f, 'wb') as fh:
@@ -96,10 +93,15 @@ def w_zero(f, size, bs=16, fsync=False):
             if size < bs:
                 fh.write(buf * size)
                 break
-        fh.flush()
+            fh.write(buf * bs)
+            size -= bs
+        # Sync
+        if fsync:
+            fh.flush()
+            os.fsync(fh.fileno())
 
 
-def filegen(min_sz, max_sz, qty, dst=None, split=None):
+def filegen(min_sz, max_sz, qty, ftype, dst=None, split=None):
     """
         Generate files.
         
@@ -107,42 +109,61 @@ def filegen(min_sz, max_sz, qty, dst=None, split=None):
             min_sz (int): Minimum file size
             max_sz (int): Maximum file size
             qty    (int): Total file count
+            ftype  (int): File typ
             dst    (str): Destination directory
             split  (int): File per directory
         Outputs:
             NULL
     """
+    # Define file type
+    if ftype == 0:
+        print 'Using zero file generator.'
+        gen = lambda f, size: w_zero(f, size)
+    elif ftype == 1:
+        print 'Using random file generator.'
+        gen = lambda f, size: w_rand(f, size)
+    elif ftype == 2:
+        print 'Using pseudo file generator.'
+        gen = lambda f, size: w_srand(f, size)
+    else:
+        raise RuntimeError('Invalid file type.')
     
+    # Use current directory if not defined
     if not dst:
-        dst = os.getcwd()
-        
+            dst = os.getcwd()
+    
+    # Define working directory                
     if split:
         current_dir = 0
-        os.mkdir(os.path.join(dst, str(current_dir)))
+        pwd = os.path.join(dst, str(current_dir))
+        os.mkdir(pwd)
     else:
-        current_dir = dst
+        pwd = dst
         split = qty
     
     current_ct = 0
     while True:
+        while current_ct < split:
+            # Write file.    
+            size = randint(min_sz, max_sz)
+            f = os.path.join(pwd, ".".join([str(current_ct), "data"]))
+            gen(f, size)
+            
+            # Update counters.
+            current_ct += 1
+            qty -= 1
+            
         # Exit if file count limit reached.
         if qty == 0:
             break
+            
+        # Increment directory
+        current_dir += 1
+        pwd = os.path.join(dst, str(current_dir))
+        os.mkdir(pwd)
         
-        # Make new directory if file count per dir reached.
-        if current_ct == split:
-            current_ct = 0
-            current_dir += 1
-            os.mkdir(os.path.join(dst, str(current_dir)))
-        
-        # Write file.    
-        size = randint(min_sz, max_sz)
-        f = os.path.join(dst, str(current_dir), ".".join([str(current_ct), "data"]))
-        w_srand(f, size)
-        
-        # Update counters.
-        current_ct += 1
-        qty -= 1
+        # Reset current file count
+        current_ct = 0
 
 if __name__ == '__main__':
     # Define CLI arguments.
@@ -153,10 +174,12 @@ if __name__ == '__main__':
         help='max file size in KB')
     parser.add_argument('--qty', dest='qty', type=int, required=True,
         help='file count')
+    parser.add_argument('--ftype', '-f', dest='ftype', type=int, required=True,
+        choices=[0, 1, 2], help='file type (0=zero, 1=rand, 2=srand)')
     parser.add_argument('--dst', dest='dst', type=str, required=False,
         default=None, help='destination directory')
     parser.add_argument('--split', dest='split', type=int, required=False,
         default=None, help='files per directory')
     args = parser.parse_args()
     
-    filegen(args.min, args.max, args.qty, args.dst, args.split)
+    filegen(args.min, args.max, args.qty, args.ftype, args.dst, args.split)
