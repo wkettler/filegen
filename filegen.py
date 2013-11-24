@@ -137,6 +137,7 @@ def filegen(min_sz, max_sz, qty, ftype, dst=None, split=None):
         pwd = os.path.join(dst, str(current_dir))
         os.mkdir(pwd)
     else:
+        current_dir = dst
         pwd = dst
         split = qty
     
@@ -146,7 +147,7 @@ def filegen(min_sz, max_sz, qty, ftype, dst=None, split=None):
             # Write file.    
             size = randint(min_sz, max_sz)
             f = os.path.join(pwd, ".".join([str(current_ct), "data"]))
-            w_srand(f, size)
+            gen(f, size)
             
             # Update counters.
             current_ct += 1
