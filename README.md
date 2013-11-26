@@ -1,4 +1,4 @@
 filegen
 =======
 
-File generation.
+File generation utility.
