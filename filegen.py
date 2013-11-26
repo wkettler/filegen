@@ -25,83 +25,89 @@ import os
 from random import randint
 from argparse import ArgumentParser
 
-def w_srand(f, size, bs=1024, fsync=False):
+def w_srand(f, sz, bs, fsync=False):
     """
-        Create a new file and fill it with pseudo random data.
+    Create a new file and fill it with pseudo random data.
     
-        Inputs:
-            f      (str): name of the file
-            size   (int): size in KB
-            bs     (int): block size in KB
-            fsync (bool): fsync after IO is complete
-        Outputs:
-            NULL
+    Inputs:
+        f      (str): File
+        sz     (int): File size in KB
+        bs     (int): Block size in KB
+        fsync (bool): Fsync after IO is complete
+    Outputs:
+        NULL
     """
-    buf = '\0' * 1024
+    buf = os.urandom(1024)
+    
     with open(f, 'wb') as fh:
         while True:
-            if size < bs:
-                fh.write(buf * size)
+            if sz < bs:
+                fh.write(buf * sz)
                 break
             fh.write(buf * bs)
-            size -= bs
-        # Sync
+            sz -= bs
+        # Force write of fdst to disk.
         if fsync:
             fh.flush()
             os.fsync(fh.fileno())
             
-def w_rand(f, size, bs=1024, fsync=False):
+def w_rand(f, sz, bs, fsync=False):
     """
-        Create a new file and fill it with random data.
+    Create a new file and fill it with random data.
     
-        Inputs:
-            f      (str): name of the file
-            size   (int): size in KB
-            bs     (int): block size in KB
-            fsync (bool): fsync after IO is complete
-        Outputs:
-            NULL
+    Inputs:
+        f      (str): File
+        sz     (int): File size in KB
+        bs     (int): Block size in KB
+        fsync (bool): Fsync after IO is complete
+    Outputs:
+        NULL
     """
-    buf = os.urandom(1024)
+    bs *= 1024
+    sz *= 1024
+    
     with open(f, 'wb') as fh:
         while True:
-            if size < bs:
-                fh.write(buf * size)
+            if sz < bs:
+                buf = os.urandom(sz)
+                fh.write(buf)
                 break
-            fh.write(buf * bs)
-            size -= bs
-        # Sync
+            buf = os.urandom(bs)
+            fh.write(buf)
+            sz -= bs
+        # Force write of fdst to disk.
         if fsync:
             fh.flush()
             os.fsync(fh.fileno())
                                 
-def w_zero(f, size, bs=1024, fsync=False):
+def w_zero(f, sz, bs, fsync=False):
     """
-        Create a new file and fill it with zeros.
-    
-        Inputs:
-            f      (str): name of the file
-            size   (int): size in KB
-            bs     (int): block size in KB
-            fsync (bool): fsync after IO is complete
-        Outputs:
-            NULL
+    Create a new file and fill it with zeros.
+
+    Inputs:
+        f      (str): File
+        sz     (int): File size in KB
+        bs     (int): Block size in KB
+        fsync (bool): Fsync after IO is complete
+    Outputs:
+        NULL
     """
     buf = '\0' * 1024
+    
     with open(f, 'wb') as fh:
         while True:
-            if size < bs:
-                fh.write(buf * size)
+            if sz < bs:
+                fh.write(buf * sz)
                 break
             fh.write(buf * bs)
-            size -= bs
-        # Sync
+            sz -= bs
+        # Force write of fdst to disk.
         if fsync:
             fh.flush()
             os.fsync(fh.fileno())
 
 
-def filegen(min_sz, max_sz, qty, ftype, dst=None, split=None):
+def filegen(min_sz, max_sz, qty, ftype, bs=1024, dst=None, split=None):
     """
         Generate files.
         
@@ -118,13 +124,13 @@ def filegen(min_sz, max_sz, qty, ftype, dst=None, split=None):
     # Define file type
     if ftype == 0:
         print 'Using zero file generator.'
-        gen = lambda f, size: w_zero(f, size)
+        gen = lambda f, size, bs: w_zero(f, size, bs)
     elif ftype == 1:
         print 'Using random file generator.'
-        gen = lambda f, size: w_rand(f, size)
+        gen = lambda f, size, bs: w_rand(f, size, bs)
     elif ftype == 2:
         print 'Using pseudo-random file generator.'
-        gen = lambda f, size: w_srand(f, size)
+        gen = lambda f, size, bs: w_srand(f, size, bs)
     else:
         raise RuntimeError('Invalid file type.')
     
@@ -147,7 +153,7 @@ def filegen(min_sz, max_sz, qty, ftype, dst=None, split=None):
             # Write file.    
             size = randint(min_sz, max_sz)
             f = os.path.join(pwd, ".".join([str(current_ct), "data"]))
-            gen(f, size)
+            gen(f, size, bs)
             
             # Update counters.
             current_ct += 1
@@ -169,17 +175,19 @@ if __name__ == '__main__':
     # Define CLI arguments.
     parser = ArgumentParser(description='File generation utility.')
     parser.add_argument('--min', dest='min', type=int, required=True,
-        help='minimum file size in KB')
+                        help='minimum file size in KB')
     parser.add_argument('--max', dest='max', type=int, required=True,
-        help='max file size in KB')
+                        help='max file size in KB')
     parser.add_argument('--qty', dest='qty', type=int, required=True,
-        help='file count')
+                        help='file count')
     parser.add_argument('--ftype', '-f', dest='ftype', type=int, required=True,
-        choices=[0, 1, 2], help='file type (0=zero, 1=rand, 2=srand)')
+                        choices=[0, 1, 2], help='file type (0=zero, 1=rand, 2=srand)')
     parser.add_argument('--dst', dest='dst', type=str, required=False,
-        default=None, help='destination directory')
+                        default=None, help='destination directory')
     parser.add_argument('--split', dest='split', type=int, required=False,
-        default=None, help='files per directory')
+                        default=None, help='files per directory')
+    parser.add_argument('--bs', dest='bs', type=int, required=False,
+                        default=1024, help='IO record size')
     args = parser.parse_args()
     
-    filegen(args.min, args.max, args.qty, args.ftype, args.dst, args.split)
+    filegen(args.min, args.max, args.qty, args.ftype, args.bs, args.dst, args.split)
