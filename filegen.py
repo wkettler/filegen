@@ -109,17 +109,17 @@ def w_zero(f, sz, bs, fsync=False):
 
 def filegen(min_sz, max_sz, qty, ftype, bs=1024, dst=None, split=None):
     """
-        Generate files.
-        
-        Inputs:
-            min_sz (int): Minimum file size
-            max_sz (int): Maximum file size
-            qty    (int): Total file count
-            ftype  (int): File type
-            dst    (str): Destination directory
-            split  (int): File per directory
-        Outputs:
-            NULL
+    Generate files.
+    
+    Inputs:
+        min_sz (int): Minimum file size
+        max_sz (int): Maximum file size
+        qty    (int): Total file count
+        ftype  (int): File type
+        dst    (str): Destination directory
+        split  (int): File per directory
+    Outputs:
+        NULL
     """
     # Define file type
     if ftype == 0:
