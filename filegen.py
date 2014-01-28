@@ -39,17 +39,21 @@ def w_srand(f, sz, bs, fsync=False):
     """
     buf = os.urandom(1024)
     
-    with open(f, 'wb') as fh:
+    try:
+        fh = os.open(f, os.O_CREAT | os.O_TRUNC | os.O_WRONLY)
         while True:
             if sz < bs:
-                fh.write(buf * sz)
+                os.write(fh, buf * sz)
                 break
-            fh.write(buf * bs)
+            os.write(fh, buf * bs)
             sz -= bs
         # Force write of fdst to disk.
         if fsync:
-            fh.flush()
-            os.fsync(fh.fileno())
+            os.fsync(fh)
+    except:
+        raise
+    finally:
+        os.close(fh)
             
 def w_rand(f, sz, bs, fsync=False):
     """
@@ -66,19 +70,23 @@ def w_rand(f, sz, bs, fsync=False):
     bs *= 1024
     sz *= 1024
     
-    with open(f, 'wb') as fh:
+    try:
+        fh = os.open(f, os.O_CREAT | os.O_TRUNC | os.O_WRONLY)
         while True:
             if sz < bs:
                 buf = os.urandom(sz)
-                fh.write(buf)
+                os.write(fh, buf)
                 break
             buf = os.urandom(bs)
-            fh.write(buf)
+            os.write(fh, buf)
             sz -= bs
         # Force write of fdst to disk.
         if fsync:
-            fh.flush()
-            os.fsync(fh.fileno())
+            os.fsync(fh)
+    except:
+        raise
+    finally:
+        os.close(fh)
                                 
 def w_zero(f, sz, bs, fsync=False):
     """
@@ -94,18 +102,21 @@ def w_zero(f, sz, bs, fsync=False):
     """
     buf = '\0' * 1024
     
-    with open(f, 'wb') as fh:
+    try:
+        fh = os.open(f, os.O_CREAT | os.O_TRUNC | os.O_WRONLY)
         while True:
             if sz < bs:
-                fh.write(buf * sz)
+                os.write(fh, buf * sz)
                 break
-            fh.write(buf * bs)
+            os.write(fh, buf * bs)
             sz -= bs
         # Force write of fdst to disk.
         if fsync:
-            fh.flush()
-            os.fsync(fh.fileno())
-
+            os.fsync(fh)
+    except:
+        raise
+    finally:
+        os.close(fh)
 
 def filegen(min_sz, max_sz, qty, ftype, bs=1024, dst=None, split=None):
     """
