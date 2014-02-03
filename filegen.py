@@ -23,7 +23,6 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 import os
 from random import randint
-from argparse import ArgumentParser
 
 def w_srand(f, sz, bs, fsync=False):
     """
@@ -183,6 +182,8 @@ def filegen(min_sz, max_sz, qty, ftype, bs=1024, dst=None, split=None):
         current_ct = 0
 
 if __name__ == '__main__':
+    from argparse import ArgumentParser
+
     # Define CLI arguments.
     parser = ArgumentParser(description='File generation utility.')
     parser.add_argument('--min', dest='min', type=int, required=True,
